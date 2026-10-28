@@ -1,0 +1,6 @@
+{
+  "name": "Fomi Creative Studio - AI Image Generation Workspace",
+  "description": "A refined, professional AI image generation workspace featuring the Prompt Recipe system, responsive gallery, settings controls, and saved creations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
