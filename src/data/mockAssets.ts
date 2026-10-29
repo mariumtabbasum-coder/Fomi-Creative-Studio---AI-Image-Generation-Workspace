@@ -1,12 +1,18 @@
 import { ImageResult } from '../types';
+import perfumeImg from '../assets/images/editorial_perfume_ceramic_1793196865766.jpg';
+import interiorChairImg from '../assets/images/minimal_lifestyle_chair_1793196866312.jpg';
+import cinematicPortraitImg from '../assets/images/cinematic_portrait_light_1793196868031.jpg';
+import botanicalStillLifeImg from '../assets/images/artistic_still_life_botanical_1793196866570.jpg';
+import botanicalPosterImg from '../assets/images/illustration_botanical_poster_1793196883359.jpg';
+import glassSculpture3DImg from '../assets/images/render_3d_glass_sculpture_1793196882874.jpg';
 
 export const ASSET_MAP = {
-  perfume: '/src/assets/images/editorial_perfume_ceramic_1793196865766.jpg',
-  interiorChair: '/src/assets/images/minimal_lifestyle_chair_1793196866312.jpg',
-  cinematicPortrait: '/src/assets/images/cinematic_portrait_light_1793196868031.jpg',
-  botanicalStillLife: '/src/assets/images/artistic_still_life_botanical_1793196866570.jpg',
-  botanicalPoster: '/src/assets/images/illustration_botanical_poster_1793196883359.jpg',
-  glassSculpture3D: '/src/assets/images/render_3d_glass_sculpture_1793196882874.jpg',
+  perfume: perfumeImg,
+  interiorChair: interiorChairImg,
+  cinematicPortrait: cinematicPortraitImg,
+  botanicalStillLife: botanicalStillLifeImg,
+  botanicalPoster: botanicalPosterImg,
+  glassSculpture3D: glassSculpture3DImg,
 };
 
 export const INITIAL_FEATURED_CREATIONS: ImageResult[] = [

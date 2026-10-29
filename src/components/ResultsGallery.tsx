@@ -45,11 +45,31 @@ export const ResultsGallery: React.FC<ResultsGalleryProps> = ({
   onStartNew,
 }) => {
   const [imageErrorMap, setImageErrorMap] = useState<Record<string, boolean>>({});
+  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<'natural' | 'uniform'>('natural');
 
   const handleImageError = (id: string) => {
     setImageErrorMap((prev) => ({ ...prev, [id]: true }));
+    setLoadedMap((prev) => ({ ...prev, [id]: true }));
+  };
+
+  const handleImageLoad = (id: string) => {
+    setLoadedMap((prev) => ({ ...prev, [id]: true }));
+  };
+
+  const handleRetryImage = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImageErrorMap((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+    setLoadedMap((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
   };
 
   const handleCopy = (id: string, promptText: string) => {
@@ -241,13 +261,21 @@ export const ResultsGallery: React.FC<ResultsGalleryProps> = ({
                 <div
                   className={`w-full ${aspectClass} bg-neutral-100 dark:bg-neutral-900 relative overflow-hidden`}
                 >
+                  {/* Subtle shimmer placeholder while loading */}
+                  {!loadedMap[item.id] && !hasError && (
+                    <div className="absolute inset-0 bg-neutral-200/50 dark:bg-neutral-800/50 animate-pulse z-0" />
+                  )}
+
                   {!hasError ? (
                     <img
                       src={item.imageUrl}
                       alt={item.prompt}
                       referrerPolicy="no-referrer"
+                      onLoad={() => handleImageLoad(item.id)}
                       onError={() => handleImageError(item.id)}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                      className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-[1.02] ${
+                        loadedMap[item.id] ? 'opacity-100' : 'opacity-0'
+                      }`}
                       loading="lazy"
                     />
                   ) : (
@@ -259,6 +287,13 @@ export const ResultsGallery: React.FC<ResultsGalleryProps> = ({
                       <span className="text-[11px] text-neutral-400 font-mono mt-0.5">
                         {item.style} · {item.aspectRatio}
                       </span>
+                      <button
+                        onClick={(e) => handleRetryImage(item.id, e)}
+                        className="mt-2.5 px-2.5 py-1 rounded-md bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-[11px] font-medium text-neutral-700 dark:text-neutral-200 flex items-center gap-1 transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Retry</span>
+                      </button>
                     </div>
                   )}
 

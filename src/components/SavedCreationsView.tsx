@@ -13,6 +13,7 @@ import {
   Clock,
   Layers,
   Check,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { ImageResult } from '../types';
 
@@ -50,6 +51,7 @@ export const SavedCreationsView: React.FC<SavedCreationsViewProps> = ({
   const [selectedStyle, setSelectedStyle] = useState('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [savedErrorMap, setSavedErrorMap] = useState<Record<string, boolean>>({});
 
   // Exact synchronized counts
   const favoritesCount = useMemo(
@@ -232,13 +234,26 @@ export const SavedCreationsView: React.FC<SavedCreationsViewProps> = ({
             >
               {/* Media preview */}
               <div className="relative aspect-[4/3] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
-                <img
-                  src={item.imageUrl}
-                  alt={item.prompt}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
+                {!savedErrorMap[item.id] ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.prompt}
+                    referrerPolicy="no-referrer"
+                    onError={() => setSavedErrorMap((prev) => ({ ...prev, [item.id]: true }))}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-neutral-100 dark:bg-neutral-800 text-center">
+                    <ImageIcon className="w-7 h-7 text-neutral-400 mb-1" />
+                    <span className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300">
+                      {item.style} Concept
+                    </span>
+                    <span className="text-[10px] text-neutral-400 font-mono">
+                      {item.aspectRatio}
+                    </span>
+                  </div>
+                )}
 
                 {/* Aspect ratio and favorite badges */}
                 <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-mono backdrop-blur-sm">
