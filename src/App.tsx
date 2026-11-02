@@ -248,8 +248,13 @@ export default function App() {
   // Download image
   const handleDownloadImage = async (image: ImageResult) => {
     addToast('Preparing high-resolution asset...', 'info');
-    await downloadImageResult(image);
-    addToast('Asset downloaded successfully!', 'success');
+    try {
+      await downloadImageResult(image);
+      addToast('Asset downloaded successfully!', 'success');
+    } catch {
+      addToast('Opening asset directly in new tab...', 'info');
+      window.open(image.imageUrl, '_blank');
+    }
   };
 
   // Regenerate variation with slight seed drift

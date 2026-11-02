@@ -86,6 +86,41 @@ export async function simulateImageGeneration(
 }
 
 /**
+ * Resolves legacy, unbundled, or cached image URLs (e.g. from previous localStorage entries)
+ * to valid bundled production asset URLs.
+ */
+export function normalizeImageUrl(rawUrl?: string): string {
+  if (!rawUrl) return ASSET_MAP.perfume;
+
+  // Preserve valid base64 data URLs or Blob URLs
+  if (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:')) {
+    return rawUrl;
+  }
+
+  // Handle legacy /src/assets/images or mismatched file names from previous deployments
+  if (rawUrl.includes('editorial_perfume') || rawUrl.includes('perfume')) {
+    return ASSET_MAP.perfume;
+  }
+  if (rawUrl.includes('minimal_lifestyle') || rawUrl.includes('chair')) {
+    return ASSET_MAP.interiorChair;
+  }
+  if (rawUrl.includes('cinematic_portrait') || rawUrl.includes('portrait')) {
+    return ASSET_MAP.cinematicPortrait;
+  }
+  if (rawUrl.includes('still_life_botanical') || rawUrl.includes('botanicalStillLife')) {
+    return ASSET_MAP.botanicalStillLife;
+  }
+  if (rawUrl.includes('botanical_poster') || rawUrl.includes('illustration') || rawUrl.includes('poster')) {
+    return ASSET_MAP.botanicalPoster;
+  }
+  if (rawUrl.includes('glass_sculpture') || rawUrl.includes('render_3d') || rawUrl.includes('3D')) {
+    return ASSET_MAP.glassSculpture3D;
+  }
+
+  return rawUrl;
+}
+
+/**
  * Safe local storage manager with error handling & fallbacks
  */
 const STORAGE_KEYS = {
@@ -100,7 +135,14 @@ export function loadSavedCreations(): ImageResult[] {
     const raw = localStorage.getItem(STORAGE_KEYS.CREATIONS);
     if (!raw) return INITIAL_FEATURED_CREATIONS;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_FEATURED_CREATIONS;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Normalize any stale or unbundled image paths from prior local storage
+      return parsed.map((item) => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl),
+      }));
+    }
+    return INITIAL_FEATURED_CREATIONS;
   } catch (err) {
     console.warn('Could not read saved creations from localStorage:', err);
     return INITIAL_FEATURED_CREATIONS;
@@ -137,29 +179,85 @@ export function saveThemePreference(theme: 'light' | 'dark'): void {
 }
 
 /**
- * Downloads an image cleanly without third-party popups
+ * Downloads an image cleanly across environments (production assets, base64 data, cross-origin)
  */
-export async function downloadImageResult(image: ImageResult): Promise<void> {
+export async function downloadImageResult(image: ImageResult): Promise<boolean> {
+  const resolvedUrl = normalizeImageUrl(image.imageUrl);
+  const fileName = `fomi-studio-${image.id}-${image.aspectRatio.replace(':', 'x')}.jpg`;
+
+  // 1. Data URLs or Blob URLs can be downloaded directly
+  if (resolvedUrl.startsWith('data:') || resolvedUrl.startsWith('blob:')) {
+    const link = document.createElement('a');
+    link.href = resolvedUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return true;
+  }
+
+  // 2. Fetch with blob conversion (validates mime-type isn't index.html)
   try {
-    const response = await fetch(image.imageUrl);
+    const response = await fetch(resolvedUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      throw new Error('Received HTML instead of image');
+    }
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = `fomi-studio-${image.id}-${image.aspectRatio.replace(':', 'x')}.jpg`;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(blobUrl);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    return true;
   } catch (e) {
-    // Fallback direct link trigger
+    console.warn('Blob fetch download failed, falling back to canvas/direct export:', e);
+
+    // 3. Fallback: Draw to an offscreen image & canvas to generate a clean JPEG download
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Image failed to load for canvas export'));
+        img.src = resolvedUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || image.dimensions.width;
+      canvas.height = img.naturalHeight || image.dimensions.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return true;
+      }
+    } catch (canvasErr) {
+      console.warn('Canvas export failed, falling back to direct anchor:', canvasErr);
+    }
+
+    // 4. Final fallback direct link trigger
     const link = document.createElement('a');
-    link.href = image.imageUrl;
-    link.download = `fomi-studio-${image.id}.jpg`;
+    link.href = resolvedUrl;
+    link.download = fileName;
     link.target = '_blank';
     link.rel = 'noreferrer noopener';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    return true;
   }
 }
+

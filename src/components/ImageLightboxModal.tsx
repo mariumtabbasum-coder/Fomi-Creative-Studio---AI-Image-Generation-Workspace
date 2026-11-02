@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Heart,
@@ -11,6 +11,9 @@ import {
   Calendar,
   Layers,
   Settings2,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { ImageResult } from '../types';
 
@@ -39,6 +42,14 @@ export const ImageLightboxModal: React.FC<LightboxProps> = ({
   hasNext,
   hasPrevious,
 }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset loading & error state when image changes
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+  }, [image?.id, image?.imageUrl]);
   // Keyboard listeners: Esc to close, Arrow keys to navigate
   useEffect(() => {
     if (!image) return;
@@ -86,18 +97,68 @@ export const ImageLightboxModal: React.FC<LightboxProps> = ({
 
         {/* Left Side: Image Viewport */}
         <div className="relative flex-1 bg-neutral-950 flex items-center justify-center min-h-[300px] md:min-h-[500px] overflow-hidden p-4">
-          <img
-            src={image.imageUrl}
-            alt={image.prompt}
-            referrerPolicy="no-referrer"
-            className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-lg"
-          />
+          {/* Loading spinner overlay */}
+          {isLoading && !hasError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral-950/80 z-10">
+              <Loader2 className="w-8 h-8 text-[#D95338] animate-spin" />
+              <span className="text-xs text-neutral-400 font-mono">Loading full-resolution asset...</span>
+            </div>
+          )}
+
+          {/* Error fallback state */}
+          {hasError ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center max-w-sm space-y-3 z-10">
+              <div className="w-12 h-12 rounded-full bg-rose-950/60 border border-rose-800/80 text-rose-400 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-200">Unable to Render Preview</h3>
+                <p className="text-xs text-neutral-400 mt-1">
+                  The visual asset could not be displayed. You can attempt to reload it or download the source asset directly.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setHasError(false);
+                    setIsLoading(true);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-200 flex items-center gap-1.5 transition-colors border border-neutral-700"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry Load</span>
+                </button>
+                <button
+                  onClick={() => onDownload(image)}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#D95338] hover:bg-[#C2432B] text-xs text-white flex items-center gap-1.5 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <img
+              key={`${image.id}-${image.imageUrl}`}
+              src={image.imageUrl}
+              alt={image.prompt}
+              referrerPolicy="no-referrer"
+              onLoad={() => setIsLoading(false)}
+              onError={() => {
+                setIsLoading(false);
+                setHasError(true);
+              }}
+              className={`max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-lg transition-opacity duration-300 ${
+                isLoading ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+          )}
 
           {/* Navigation Arrows */}
           {hasPrevious && onPrevious && (
             <button
               onClick={onPrevious}
-              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition-colors"
+              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition-colors z-20"
               aria-label="Previous image"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -107,7 +168,7 @@ export const ImageLightboxModal: React.FC<LightboxProps> = ({
           {hasNext && onNext && (
             <button
               onClick={onNext}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition-colors z-20"
               aria-label="Next image"
             >
               <ArrowRight className="w-5 h-5" />
